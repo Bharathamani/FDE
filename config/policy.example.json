@@ -1,0 +1,13 @@
+{
+  "default": {
+    "threshold_c": 8.0,
+    "clear_threshold_c": 7.5,
+    "min_duration_minutes": 20,
+    "min_breach_readings": 3,
+    "max_gap_minutes": 15,
+    "recovery_readings": 2,
+    "nominal_interval_minutes": 5,
+    "min_coverage": 0.5
+  },
+  "trucks": {}
+}

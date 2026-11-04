@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nimbus Freight | Cold-Chain Alert Console</title>
+  <style>
+    :root {
+      --ink: #142033;
+      --muted: #5d6b7f;
+      --line: #dce3ec;
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --navy: #0b1f3a;
+      --blue: #1768d6;
+      --blue-soft: #eaf2ff;
+      --red: #c62828;
+      --red-soft: #fdecec;
+      --amber: #a35a00;
+      --amber-soft: #fff4df;
+      --green: #167346;
+      --green-soft: #e8f7ef;
+      --shadow: 0 12px 30px rgba(17, 38, 70, 0.08);
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(900px 400px at 10% -10%, #e4efff 0%, transparent 60%),
+        var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.45;
+    }
+    header {
+      background: linear-gradient(120deg, #08182e 0%, #0d2a52 55%, #124a82 100%);
+      color: #fff;
+      padding: 22px 32px 20px;
+      box-shadow: 0 10px 30px rgba(6, 24, 50, 0.18);
+    }
+    .header-inner {
+      max-width: 1420px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .brand-mark {
+      width: 42px; height: 42px; border-radius: 12px;
+      background: linear-gradient(145deg, #6fd3ff, #2b7fff);
+      display: grid; place-items: center; font-weight: 800; color: #062145;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.35);
+    }
+    h1 { font-size: 21px; margin: 0; letter-spacing: .2px; }
+    .subtitle { margin: 3px 0 0; color: #b9d4f6; font-size: 13px; }
+    .header-right { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .live {
+      display: inline-flex; align-items: center; gap: 8px; font-size: 13px;
+      color: #d6e9ff; background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.14);
+      padding: 7px 11px; border-radius: 999px;
+    }
+    .pulse {
+      width: 8px; height: 8px; border-radius: 50%; background: #55e6a5;
+      box-shadow: 0 0 0 0 rgba(85,230,165,.65); animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(85,230,165,.6); }
+      70% { box-shadow: 0 0 0 9px rgba(85,230,165,0); }
+      100% { box-shadow: 0 0 0 0 rgba(85,230,165,0); }
+    }
+    button {
+      font: inherit; cursor: pointer; border: 0; border-radius: 10px;
+      padding: 9px 14px; font-weight: 650; background: #fff; color: var(--navy);
+      box-shadow: 0 5px 16px rgba(0,0,0,.12);
+    }
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: .6; cursor: wait; transform: none; }
+    main { max-width: 1420px; margin: 0 auto; padding: 26px 32px 48px; }
+    .kpis {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px; margin-bottom: 22px;
+    }
+    .kpi {
+      background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 18px 20px; box-shadow: var(--shadow); position: relative; overflow: hidden;
+    }
+    .kpi::after {
+      content: ""; position: absolute; right: -20px; top: -30px;
+      width: 95px; height: 95px; border-radius: 50%; background: var(--blue-soft);
+      opacity: .8;
+    }
+    .kpi.alert::after { background: var(--red-soft); }
+    .kpi.resolved::after { background: var(--green-soft); }
+    .kpi-label {
+      position: relative; z-index: 1; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .09em; font-size: 11px; font-weight: 750;
+    }
+    .kpi-value { position: relative; z-index: 1; font-size: 32px; font-weight: 800; margin-top: 5px; }
+    .kpi-note { position: relative; z-index: 1; color: var(--muted); font-size: 12px; margin-top: 3px; }
+    .layout {
+      display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(330px, .9fr);
+      gap: 22px; align-items: start;
+    }
+    .panel {
+      background: var(--panel); border: 1px solid var(--line);
+      border-radius: var(--radius); box-shadow: var(--shadow);
+    }
+    .panel-head {
+      padding: 17px 20px 13px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .panel-head h2 { font-size: 15px; margin: 0; letter-spacing: .1px; }
+    .panel-head .hint { color: var(--muted); font-size: 12px; }
+    .panel-body { padding: 16px 20px 20px; }
+    .incident {
+      border: 1px solid var(--line); border-left: 5px solid var(--amber);
+      border-radius: 12px; padding: 15px 16px 13px; margin-bottom: 13px;
+      background: #fff; transition: box-shadow .15s ease;
+    }
+    .incident:last-child { margin-bottom: 0; }
+    .incident:hover { box-shadow: 0 7px 20px rgba(17, 38, 70, .07); }
+    .incident.critical { border-left-color: var(--red); background: linear-gradient(90deg, #fff8f8 0%, #fff 18%); }
+    .incident.high { border-left-color: #e56a00; }
+    .incident.medium { border-left-color: #d79b00; }
+    .incident.resolved { border-left-color: var(--green); opacity: .82; }
+    .incident-top { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+    .truck { font-size: 17px; font-weight: 800; letter-spacing: .2px; }
+    .badge {
+      display: inline-flex; align-items: center; border-radius: 999px;
+      font-size: 10.5px; font-weight: 800; letter-spacing: .06em;
+      padding: 4px 8px; text-transform: uppercase;
+    }
+    .sev-critical { background: var(--red-soft); color: var(--red); }
+    .sev-high { background: #fff0e2; color: #b34f00; }
+    .sev-medium { background: var(--amber-soft); color: var(--amber); }
+    .sev-low { background: #eef2f7; color: var(--muted); }
+    .status-open { background: var(--red-soft); color: var(--red); }
+    .status-resolved { background: var(--green-soft); color: var(--green); }
+    .incident-summary { margin: 9px 0 12px; color: #2b3a4f; font-size: 13.5px; }
+    .metrics {
+      display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px; margin: 0;
+    }
+    .metric { background: #f7f9fc; border-radius: 9px; padding: 8px 9px; }
+    .metric dt { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .07em; }
+    .metric dd { margin: 2px 0 0; font-size: 13px; font-weight: 750; }
+    details.evidence { margin-top: 11px; }
+    details.evidence summary {
+      cursor: pointer; color: var(--blue); font-size: 12px; font-weight: 700;
+      list-style: none;
+    }
+    details.evidence summary::-webkit-details-marker { display: none; }
+    details.evidence summary::before { content: "+ "; }
+    details.evidence[open] summary::before { content: "- "; }
+    .evidence-table { width: 100%; border-collapse: collapse; margin-top: 9px; font-size: 12px; }
+    .evidence-table th, .evidence-table td {
+      text-align: left; padding: 5px 7px; border-bottom: 1px solid #edf1f6;
+    }
+    .evidence-table th { color: var(--muted); font-weight: 650; }
+    .fleet-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .fleet-table th, .fleet-table td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #edf1f6; }
+    .fleet-table th { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .07em; }
+    .fleet-table tr:last-child td { border-bottom: 0; }
+    .fleet-status { font-weight: 800; font-size: 11px; }
+    .fleet-status.alert { color: var(--red); }
+    .fleet-status.ok { color: var(--green); }
+    .policy-list { display: grid; gap: 9px; }
+    .policy-row { display: flex; justify-content: space-between; gap: 12px; font-size: 12.5px; }
+    .policy-row span:first-child { color: var(--muted); }
+    .policy-row span:last-child { font-weight: 750; text-align: right; }
+    .activity { display: grid; gap: 10px; }
+    .event { display: flex; gap: 9px; align-items: flex-start; font-size: 12px; }
+    .event-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--blue);
+      margin-top: 5px; flex: 0 0 auto;
+    }
+    .event-dot.resolved { background: var(--green); }
+    .event-dot.opened { background: var(--red); }
+    .event-body { min-width: 0; }
+    .event-title { font-weight: 700; color: #24364d; }
+    .event-meta { color: var(--muted); font-size: 11px; }
+    .empty {
+      text-align: center; padding: 36px 16px; color: var(--muted);
+      background: #f9fbfd; border: 1px dashed var(--line); border-radius: 12px;
+    }
+    .empty strong { display: block; color: var(--ink); margin-bottom: 4px; }
+    .banner {
+      margin: 0 0 18px; padding: 11px 14px; border-radius: 11px;
+      background: var(--blue-soft); border: 1px solid #cfe2ff; color: #174a87;
+      font-size: 12.5px;
+    }
+    .toast {
+      position: fixed; right: 24px; bottom: 24px; max-width: 440px;
+      background: var(--navy); color: #fff; padding: 13px 16px; border-radius: 12px;
+      box-shadow: 0 14px 40px rgba(0,0,0,.25); font-size: 13px;
+      opacity: 0; transform: translateY(12px); pointer-events: none;
+      transition: opacity .2s ease, transform .2s ease; z-index: 50;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .footer-note { color: var(--muted); font-size: 11.5px; margin-top: 14px; text-align: right; }
+    @media (max-width: 1050px) {
+      .layout { grid-template-columns: 1fr; }
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 620px) {
+      header, main { padding-left: 18px; padding-right: 18px; }
+      .kpis { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-mark">NF</div>
+        <div>
+          <h1>Nimbus Freight &mdash; Cold-Chain Alert Console</h1>
+          <p class="subtitle">Sustained excursions only. One alert per incident. Brief blips stay out of the feed.</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <span class="live"><span class="pulse"></span> Live <span id="last-updated">loading</span></span>
+        <button id="replay-button" style="display:none">Replay demo data</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="banner">
+      <strong>Alert policy:</strong> a truck must stay above the safe limit for a sustained window,
+      with enough real readings to prove it. The engine tolerates bounded gaps, ignores brief spikes,
+      and uses recovery hysteresis so an ongoing issue does not re-alert every few minutes.
+    </div>
+
+    <section class="kpis" aria-label="Key metrics">
+      <div class="kpi alert">
+        <div class="kpi-label">Open incidents</div>
+        <div class="kpi-value" id="kpi-open">-</div>
+        <div class="kpi-note" id="kpi-critical">-</div>
+      </div>
+      <div class="kpi resolved">
+        <div class="kpi-label">Resolved incidents</div>
+        <div class="kpi-value" id="kpi-resolved">-</div>
+        <div class="kpi-note">Recovered after clear readings</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Trucks monitored</div>
+        <div class="kpi-value" id="kpi-trucks">-</div>
+        <div class="kpi-note" id="kpi-last-reading">Latest reading -</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Readings ingested</div>
+        <div class="kpi-value" id="kpi-readings">-</div>
+        <div class="kpi-note" id="kpi-events">-</div>
+      </div>
+    </section>
+
+    <div class="layout">
+      <section class="panel" aria-label="Incidents">
+        <div class="panel-head">
+          <h2>Incidents</h2>
+          <span class="hint" id="incident-count">-</span>
+        </div>
+        <div class="panel-body" id="incidents"></div>
+      </section>
+
+      <aside style="display:grid; gap:22px">
+        <section class="panel" aria-label="Fleet status">
+          <div class="panel-head"><h2>Fleet status</h2><span class="hint">Latest reading</span></div>
+          <div class="panel-body" id="fleet"></div>
+        </section>
+
+        <section class="panel" aria-label="Alert policy">
+          <div class="panel-head"><h2>Alert policy</h2><span class="hint">Configurable</span></div>
+          <div class="panel-body policy-list" id="policy"></div>
+        </section>
+
+        <section class="panel" aria-label="Recent activity">
+          <div class="panel-head"><h2>Recent activity</h2><span class="hint">Deduplicated events</span></div>
+          <div class="panel-body activity" id="activity"></div>
+        </section>
+      </aside>
+    </div>
+    <div class="footer-note">Nimbus Freight FDE case study &middot; event-time engine &middot; UTC timestamps</div>
+  </main>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    const REFRESH_MS = 5000;
+    let latestData = null;
+
+    function esc(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+    function clock(iso) {
+      if (!iso) return "-";
+      const match = String(iso).match(/T(\d{2}:\d{2})/);
+      return match ? match[1] : String(iso);
+    }
+    function fmt(value, digits = 1) {
+      if (value === null || value === undefined) return "-";
+      return Number(value).toFixed(digits);
+    }
+    function fmtDuration(minutes) {
+      if (minutes === null || minutes === undefined) return "-";
+      const m = Math.round(Number(minutes));
+      if (m < 60) return m + " min";
+      return Math.floor(m / 60) + " hr " + (m % 60) + " min";
+    }
+    function badge(text, cls) {
+      return `<span class="badge ${cls}">${esc(text)}</span>`;
+    }
+    function incidentCard(incident) {
+      const severity = String(incident.severity || "MEDIUM").toLowerCase();
+      const status = String(incident.status || "");
+      const severityClass = severity === "critical" ? "sev-critical" : severity === "high" ? "sev-high" : "sev-medium";
+      const statusClass = status === "OPEN" ? "status-open" : "status-resolved";
+      const statusLabel = status === "OPEN" ? "Active alert" : "Resolved";
+      const samples = (incident.breach_samples || []).slice(0, 20);
+      const sampleRows = samples.map(s =>
+        `<tr><td>${esc(clock(s.timestamp))}</td><td>${fmt(s.temperature_c)} &deg;C</td></tr>`
+      ).join("");
+      const gapRows = (incident.gaps || []).map(g =>
+        `<tr><td>${esc(clock(g.start))}&ndash;${esc(clock(g.end))}</td><td>${fmt(g.minutes, 0)} min gap</td></tr>`
+      ).join("");
+      const more = (incident.breach_samples || []).length > samples.length
+        ? `<tr><td colspan="2">... ${esc((incident.breach_samples || []).length - samples.length)} more readings</td></tr>`
+        : "";
+      return `
+        <article class="incident ${severity} ${status === "RESOLVED" ? "resolved" : ""}">
+          <div class="incident-top">
+            <span class="truck">${esc(incident.truck_id)}</span>
+            ${badge(incident.severity, severityClass)}
+            ${badge(statusLabel, statusClass)}
+            <span class="hint" style="margin-left:auto;color:var(--muted);font-size:11px">
+              ${esc(clock(incident.run_start))}&ndash;${esc(clock(incident.last_breach_at))} UTC
+            </span>
+          </div>
+          <p class="incident-summary">${esc(incident.summary)}</p>
+          <dl class="metrics">
+            <div class="metric"><dt>Above limit</dt><dd>${fmtDuration(incident.exposure_minutes)}</dd></div>
+            <div class="metric"><dt>Peak</dt><dd>${fmt(incident.peak_c)} &deg;C</dd></div>
+            <div class="metric"><dt>Breach readings</dt><dd>${esc(incident.breach_count)} / ${esc(incident.expected_samples)}</dd></div>
+            <div class="metric"><dt>Coverage</dt><dd>${Math.round(Number(incident.coverage || 0) * 100)}%</dd></div>
+            <div class="metric"><dt>Data gap</dt><dd>${fmt(incident.max_gap_minutes, 0)} min</dd></div>
+          </dl>
+          <details class="evidence">
+            <summary>Evidence &mdash; ${esc((incident.breach_samples || []).length)} breach readings, ${esc((incident.gaps || []).length)} gap(s)</summary>
+            <table class="evidence-table">
+              <thead><tr><th>Time</th><th>Value</th></tr></thead>
+              <tbody>${sampleRows}${more}${gapRows}</tbody>
+            </table>
+          </details>
+        </article>`;
+    }
+    function render(data) {
+      latestData = data;
+      const stats = data.stats || {};
+      document.getElementById("kpi-open").textContent = stats.open_incidents ?? 0;
+      document.getElementById("kpi-critical").textContent =
+        `${stats.critical_open ?? 0} critical \u00b7 ${stats.alert_events ?? 0} lifecycle events`;
+      document.getElementById("kpi-resolved").textContent = stats.resolved_incidents ?? 0;
+      document.getElementById("kpi-trucks").textContent = stats.trucks ?? 0;
+      document.getElementById("kpi-readings").textContent = stats.readings ?? 0;
+      document.getElementById("kpi-last-reading").textContent =
+        stats.last_reading_at ? `Latest reading ${clock(stats.last_reading_at)} UTC` : "No readings yet";
+      document.getElementById("kpi-events").textContent =
+        `${stats.alert_events ?? 0} deduplicated notifications`;
+      document.getElementById("last-updated").textContent = clock(data.generated_at) + " UTC";
+
+      const incidents = data.incidents || [];
+      document.getElementById("incident-count").textContent =
+        `${incidents.length} incident${incidents.length === 1 ? "" : "s"}`;
+      document.getElementById("incidents").innerHTML = incidents.length
+        ? incidents.map(incidentCard).join("")
+        : `<div class="empty"><strong>No sustained excursions</strong>
+             Brief blips and incomplete episodes are suppressed. Nothing needs an ops response.</div>`;
+
+      const trucks = data.trucks || [];
+      trucks.sort((a, b) => (a.status === b.status ? a.truck_id.localeCompare(b.truck_id) : a.status === "ALERT" ? -1 : 1));
+      document.getElementById("fleet").innerHTML = trucks.length ? `
+        <table class="fleet-table">
+          <thead><tr><th>Truck</th><th>Temp</th><th>Status</th><th>Last seen</th></tr></thead>
+          <tbody>${trucks.map(t => `
+            <tr>
+              <td><strong>${esc(t.truck_id)}</strong></td>
+              <td>${t.latest_temperature_c === null ? "-" : fmt(t.latest_temperature_c) + " &deg;C"}</td>
+              <td><span class="fleet-status ${t.status === "ALERT" ? "alert" : "ok"}">${esc(t.status)}</span></td>
+              <td>${esc(clock(t.last_reading_at))}</td>
+            </tr>`).join("")}</tbody>
+        </table>` : `<div class="empty">No truck readings yet.</div>`;
+
+      const policy = (data.policy && data.policy.default) || {};
+      document.getElementById("policy").innerHTML = `
+        <div class="policy-row"><span>Breach threshold</span><span>&gt; ${fmt(policy.threshold_c)} &deg;C</span></div>
+        <div class="policy-row"><span>Clear threshold</span><span>&le; ${fmt(policy.clear_threshold_c)} &deg;C</span></div>
+        <div class="policy-row"><span>Sustained window</span><span>${fmt(policy.min_duration_minutes, 0)} min</span></div>
+        <div class="policy-row"><span>Minimum breach readings</span><span>${esc(policy.min_breach_readings)}</span></div>
+        <div class="policy-row"><span>Gap tolerance</span><span>${fmt(policy.max_gap_minutes, 0)} min</span></div>
+        <div class="policy-row"><span>Recovery evidence</span><span>${esc(policy.recovery_readings)} clear readings</span></div>
+        <div class="policy-row"><span>Sample cadence</span><span>${fmt(policy.nominal_interval_minutes, 0)} min</span></div>`;
+
+      const events = data.recent_events || [];
+      document.getElementById("activity").innerHTML = events.length ? events.map(e => {
+        const type = String(e.event_type || "").toLowerCase();
+        return `<div class="event">
+          <span class="event-dot ${esc(type)}"></span>
+          <div class="event-body">
+            <div class="event-title">${esc(e.event_type)} &middot; ${esc(e.truck_id)}</div>
+            <div class="event-meta">${esc(clock(e.occurred_at))} UTC &middot; ${esc(e.severity || "")}</div>
+          </div>
+        </div>`;
+      }).join("") : `<div class="empty">No lifecycle events yet.</div>`;
+
+      const replayButton = document.getElementById("replay-button");
+      replayButton.style.display = data.demo_mode ? "inline-block" : "none";
+    }
+    async function load() {
+      try {
+        const response = await fetch("/api/v1/dashboard", { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        render(await response.json());
+      } catch (error) {
+        document.getElementById("last-updated").textContent = "offline";
+        console.error(error);
+      }
+    }
+    function toast(message) {
+      const node = document.getElementById("toast");
+      node.textContent = message;
+      node.classList.add("show");
+      setTimeout(() => node.classList.remove("show"), 6000);
+    }
+    document.getElementById("replay-button").addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        const response = await fetch("/api/v1/demo/replay?reset=true", { method: "POST" });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.detail || `HTTP ${response.status}`);
+        const incidents = payload.analysis?.incidents?.length ?? 0;
+        const suppressed = payload.analysis?.suppressed?.length ?? 0;
+        const events = payload.ingest?.new_events?.length ?? 0;
+        toast(`Replay complete: ${incidents} sustained incident(s), ${suppressed} suppressed blip(s), ${events} lifecycle event(s).`);
+        await load();
+      } catch (error) {
+        toast(`Replay failed: ${error.message}`);
+      } finally {
+        button.disabled = false;
+      }
+    });
+    load();
+    setInterval(load, REFRESH_MS);
+  </script>
+</body>
+</html>

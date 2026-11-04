@@ -1,0 +1,16 @@
+__pycache__/
+__MACOSX/
+.DS_Store
+*.py[cod]
+.venv/
+venv/
+.env
+.pytest_cache/
+.eggs/
+*.egg-info/
+build/
+dist/
+data/*.db
+data/*.db-shm
+data/*.db-wal
+state/
