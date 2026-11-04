@@ -184,7 +184,8 @@ It reports, per truck and in aggregate:
 
 - raw readings vs. unique `(truck, timestamp)` readings;
 - duplicate timestamps collapsed;
-- out-of-order readings;
+- out-of-order readings (an arrival earlier than the one immediately before it
+  in file/batch order — a practical measure of how shuffled the feed was);
 - expected samples for the observed time span;
 - missing expected samples;
 - each gap larger than the nominal cadence and whether it is within tolerance.
@@ -262,7 +263,10 @@ specific review.
 
 The purpose is to make the trade-off explicit: lowering the threshold or
 shortening the window catches more trucks earlier and increases noise; raising it
-or lengthening it does the opposite. The command does not change configuration.
+or lengthening it does the opposite. When a swept threshold falls below the
+configured clear threshold, the what-if policy moves the clear threshold down
+with it to preserve hysteresis. The command only reports incident counts; it does
+not change configuration or model recovery timing.
 
 ---
 
