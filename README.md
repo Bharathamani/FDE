@@ -1,20 +1,80 @@
 # Nimbus Freight Cold-Chain Alerting
 
+**Design document:** [docs/Nimbus-Cold-Chain-Design.pdf](docs/Nimbus-Cold-Chain-Design.pdf) — 11 pages, four labelled diagrams. Companion documents: [DECISIONS.md](DECISIONS.md) (decision register) and [SOLUTION_DESIGN.md](SOLUTION_DESIGN.md) (long-form notes).
+
 A runnable cold-chain alerting engine for Nimbus Freight's reefer fleet. It ingests
 temperature readings, detects **sustained** excursions per truck, suppresses brief
 blips, and emits **one alert per incident** instead of re-alerting every few minutes.
+It includes a deterministic detection engine, a SQLite-backed idempotent ingest
+pipeline, a FastAPI service, an ops dashboard, a CLI, tests, and a Docker deployment.
 
-The implementation includes a deterministic detection engine, a SQLite-backed
-idempotent ingest pipeline, a FastAPI service, an ops dashboard, tests, and a
-Docker deployment.
+**Result on the provided dataset:** 3 incidents (**T-01**, **T-04**, **T-05**), 2
+suppressed blips (T-02 and T-04's first run), and 1 quiet truck (**T-03**). Replaying
+the same dataset twice produces **0 new events**.
 
-The deliberately open questions — what counts as too warm, how long is too long,
-and what to do when data has gaps or arrives out of order — are decided and
-documented in **[DECISIONS.md](DECISIONS.md)**. The short version is below; the
-decision register contains the rationale, edge cases, configuration knobs, and
-open items for customer sign-off.
+## Requirement map
 
-![Cold-chain alert console](docs/dashboard.jpeg)
+| Requirement | How it is met | Primary file(s) |
+|---|---|---|
+| Detect genuinely sustained excursions per truck | Event-time state machine with duration, breach-count, coverage, and gap gates | `src/coldchain/engine.py` |
+| Suppress brief blips | A run that clears before the gates is recorded `SUPPRESSED` with a reason, not alerted | `src/coldchain/engine.py` |
+| Do not re-alert an ongoing issue | One deterministic incident ID; one `OPENED`; later readings update evidence only | `src/coldchain/store.py` |
+| Handle missing readings and gaps | Gaps are measured; a large gap breaks `PENDING` but never silently resolves `ACTIVE` | `engine.py`, `quality.py` |
+| Handle out-of-order and late readings | Sort by event time, collapse duplicates, recompute the truck, keep identity stable | `engine.py`, `pipeline.py` |
+| Make policy configurable | Typed `Policy`, environment variables, JSON file, per-truck overrides | `src/coldchain/config.py` |
+| Expose an ops surface | FastAPI ingest/query endpoints, single-page dashboard, CLI | `api.py`, `cli.py`, `static/index.html` |
+| Be runnable and deployable | Package install, Dockerfile, Compose, health check, seeded demo | `pyproject.toml`, `Dockerfile`, `docker-compose.yml` |
+| Document decisions and trade-offs | Decision register plus the design document | `DECISIONS.md`, `docs/Nimbus-Cold-Chain-Design.pdf` |
+| Optional LLM summary (bonus) | Template summary always works; optional rewrite never changes alert decisions | `src/coldchain/summarizer.py` |
+
+## Key files (the 15 to review)
+
+Generated files, data, and images are intentionally excluded.
+
+1. `src/coldchain/engine.py` — sorting, dedupe, PENDING/ACTIVE/RESOLVED state machine, gates, severity.
+2. `src/coldchain/quality.py` — gaps, duplicates, out-of-order and missing-sample report.
+3. `src/coldchain/store.py` — SQLite schema, upsert, incident persistence, event dedupe, supersede.
+4. `src/coldchain/pipeline.py` — ingest, per-truck recompute, event save, webhook.
+5. `src/coldchain/models.py` — Reading, Incident, BreachSample, DataGap, SuppressedEpisode, AnalysisResult.
+6. `src/coldchain/config.py` — Policy defaults, validation, environment and per-truck overrides.
+7. `src/coldchain/api.py` — FastAPI app, ingest/query endpoints, dashboard data, demo replay.
+8. `src/coldchain/cli.py` — `replay`, `alerts`, `stats`, `what-if`, `serve`.
+9. `src/coldchain/summarizer.py` — deterministic summary plus optional LLM fallback.
+10. `src/coldchain/notify.py` — best-effort Slack-compatible webhook for `OPENED`/`RESOLVED`.
+11. `src/coldchain/dataset.py` — dataset loading and validation.
+12. `src/coldchain/timeutil.py` — UTC parsing/formatting and elapsed-minute arithmetic.
+13. `tests/test_engine.py` — golden dataset, gaps, hysteresis, recovery, policy overrides, replay.
+14. `tests/test_quality.py` — out-of-order, duplicate, missing-sample, and gap reporting.
+15. `tests/test_api.py` — ingest, alert feed, dashboard, demo replay, health.
+
+## Run and test
+
+Requires Python 3.10+ (the container uses 3.12).
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt && pip install -e .
+coldchain replay --reset --data data/sensor_readings.json   # 3 incidents, 2 suppressed
+coldchain serve --demo --port 8000                          # http://localhost:8000
+pytest -q                                                   # 23 tests; or: python run_tests.py
+```
+
+Docker (service at <http://localhost:8000>, health at `/healthz`):
+
+```bash
+docker compose up --build -d
+docker compose logs -f coldchain
+```
+
+## Trade-offs and gaps
+
+- **Rule-based, not ML.** Explainable and testable; no labelled training data is required. It will not catch novel patterns until enough labelled incidents exist.
+- **SQLite and per-truck recompute.** Correct and simple for this fleet and demo. At high throughput, use event-time windows, watermarks, a time-series store, and a durable notification outbox.
+- **No stale-sensor alert.** A silent truck keeps an active incident open and records gaps, but does not raise a separate "sensor offline" incident. This is the next reliability feature.
+- **No cargo metadata.** 8.0 C is a defensible sign-off default; production needs per-cargo and per-customer setpoints. The policy file already supports per-truck overrides.
+- **No auth, acknowledgement, or escalation.** The API is meant to sit behind the customer's gateway; claiming and routing incidents is a separate product surface.
+- **Best-effort webhook.** Notification failures do not fail ingestion; production needs an outbox with retries.
+- **Elapsed time plus evidence gates, not a time-weighted exposure integral.** Degree-minutes and door-open telemetry are natural v2 inputs.
 
 ---
 
@@ -30,6 +90,8 @@ hysteresis, so a temperature hovering at the limit does not flap between open an
 resolved. One incident produces one opening event and at most one resolution
 event, no matter how many readings arrive. The full decision register is in
 [DECISIONS.md](DECISIONS.md).
+
+![Cold-chain alert console](docs/dashboard.jpeg)
 
 ---
 
