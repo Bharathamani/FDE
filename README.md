@@ -2,6 +2,8 @@
 
 **Design document:** [docs/Nimbus-Cold-Chain-Design.pdf](docs/Nimbus-Cold-Chain-Design.pdf) — 11 pages, four labelled diagrams. Companion documents: [DECISIONS.md](DECISIONS.md) (decision register) and [SOLUTION_DESIGN.md](SOLUTION_DESIGN.md) (long-form notes).
 
+**Execution evidence:** [docs/EXECUTION.md](docs/EXECUTION.md) — test, replay, idempotency, API, and dashboard outputs from a verified run.
+
 A runnable cold-chain alerting engine for Nimbus Freight's reefer fleet. It ingests
 temperature readings, detects **sustained** excursions per truck, suppresses brief
 blips, and emits **one alert per incident** instead of re-alerting every few minutes.
